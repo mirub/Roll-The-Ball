@@ -165,26 +165,12 @@ solve :: (ProblemState s a, Ord s)
       => s          -- Starea inițială de la care se pornește
       -> s          -- Starea finală la care se ajunge
       -> [(Maybe a, s)]   -- Lista perechilor
+solve = undefined
+--solve initialState finalState = path
+--    where
+--        path = (extractPath firstHalf) ++ revAct
+--        commonNode = bidirBFS (createStateSpace initialState) (createStateSpace finalState)
+--        firstHalf = fst commonNode
+--        secondHalf = snd commonNode
+--        revAct = map (\entry@(action, state) -> (fromJust (fst (reverseAction (action, state))), snd(reverseAction (action, state)))) (extractPath secondHalf)
 
-solve initialState finalState = path
-    where
-        path = (extractPath firstHalf) ++ newPath --lastList
-        commonNode = bidirBFS (createStateSpace initialState) (createStateSpace finalState)
-        firstHalf = fst commonNode
-        secondHalf = snd commonNode
-        finishNode =  head (extractPath secondHalf)
-        sndPath = tail (extractPath secondHalf)
-        revAct = map (\entry@(action, state) -> (Just (fst(reverseAction (fromJust action, state))), snd(reverseAction (fromJust action, state)))) sndPath
-        newPath = (reverse revAct) ++ finishNode : []
-        -- newActions = switchActions newPath
-        -- switchActions [x] = [x]
-        -- switchActions (x:y:list) = (fst x, snd y):[] ++ switchActions (y:list)
-        -- lastList = (tail newActions)
-
-{-
-Finish -> ... -> S
-reverseAction pe toate mai putin finish
-reverse lista ++ Finish : S -> ... -> Finish
-!!!! node[i + 1].action = node[i].action
-remove S
--}
