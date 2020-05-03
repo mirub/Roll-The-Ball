@@ -442,13 +442,13 @@ getDoAction pos lvl dir
 getActions :: Position -> Level -> [(Position, Directions)]
 getActions pos lvl = [] ++ (getDoAction pos lvl North) ++ (getDoAction pos lvl South) ++ (getDoAction pos lvl West) ++ (getDoAction pos lvl East)
 
--- Returneaza vechea pozitie
+-- Returneaza npua pozitie a pipe-ului vechi si directia de redo
 getOldPos :: (Position, Directions) -> (Position, Directions)
 getOldPos (pos, dir)
     | (dir == North) = ((fst(pos) - 1, snd(pos)), South)
     | (dir == South) = ((fst(pos) + 1, snd(pos)), North)
-    | (dir == East) = ((fst(pos), snd(pos) - 1), West)
-    | (dir == West) =  ((fst(pos), snd(pos) + 1), East)
+    | (dir == East) = ((fst(pos), snd(pos) + 1), West)
+    | (dir == West) =  ((fst(pos), snd(pos) - 1), East)
     | otherwise = (pos, dir)
 
 
@@ -461,6 +461,7 @@ testArray1 = A.array ((0, 0), (2, 2))
                     ((2, 0), (Cell (2,0) winUp)), ((2, 1), (Cell (2,1) emptySpace)), ((2, 2), (Cell (2,2) emptySpace))]
                
 test4 = moveCell (1, 1) North (Level (testArray1) (0,0) (2,2))
+
 
 -- END TEST MOVE CELL
 
@@ -475,6 +476,7 @@ instance ProblemState Level (Position, Directions) where
 
     reverseAction action@((pos, dir), lvl) = (oldPos, oldLevel)
         where oldPos = getOldPos (pos, dir)
-              oldPlace = fst(oldPos)
+              newPlace = fst(oldPos)
               oldDir = snd(oldPos)
-              oldLevel = moveCell oldPlace oldDir lvl
+              oldLevel = moveCell newPlace oldDir lvl
+                   

@@ -19,8 +19,6 @@ import ProblemState
     * copiii, ce vor desemna stările învecinate
 -}
 
-
-
 data Node s a = Node {state :: s,
                       action :: Maybe a,
                       parentNode :: Maybe (Node s a),
@@ -57,19 +55,24 @@ nodeChildren (Node _ _ _ _ chl) = chl
 
 -- Returneaza copiii unui nod
 getChildren :: (ProblemState s a) => s -> a -> Node s a -> Int -> Node s a
-getChildren lvl act p depth = newNode
+getChildren lvl act p depth = Node lvl maybeAct maybeParent depth succ
     where 
-        newNode = Node lvl (Just act) (Just p) depth succ
-        succ = map (\(ac, lev) -> getChildren lev ac newNode (depth + 1)) children
-        children = successors lvl
+        succ = map (\(ac, lev) -> getChildren lev ac newNode futureDepth) (successors lvl)
+        newNode = Node lvl maybeAct maybeParent depth succ
+        maybeParent = Just p
+        maybeAct = Just act
+        futureDepth = depth + 1
+
+-- Creeaza nodul principal        
+createMainNode :: (ProblemState s a) => s -> Node s a
+createMainNode lvl = Node lvl Nothing Nothing 0 succ
+    where
+        node     = Node lvl Nothing Nothing 0 succ
+        succ     = map (\(ac, lev) -> getChildren lev ac node 1) $ successors lvl
 
 -- Creeaza nodul corespunzator unei stari
 createStateSpace :: (ProblemState s a, Eq s) => s -> Node s a
-createStateSpace lvl = node
-    where
-        node     = Node lvl Nothing Nothing 0 succ
-        succ     = map (\(ac, lev) -> getChildren lev ac node 1) $ children
-        children = successors lvl
+createStateSpace lvl = createMainNode lvl
 
 {-
     *** TODO ***
@@ -92,7 +95,7 @@ bfsParser (x:queue) visited
     | (nodeState x) `elem` visited = bfsParser queue visited
     | otherwise = [(headChildren, newQueue)] ++ (bfsParser newQueue newVisited)
         where
-            headChildren = filter (\v -> not(elem (nodeState x) visited)) (nodeChildren x)
+            headChildren = nodeChildren x
             newQueue = queue ++ headChildren
             newVisited = (nodeState x):[] ++ visited
 
@@ -107,6 +110,10 @@ bfs startingNode = bfsParser [startingNode] []
 -}
 
 -- Returneaza nodurile care aceeasi stare in cele 2 multimi
+
+-- Verifica daca elementele din prima lista se afla in a doua si returneaza
+-- nodul
+
 equalElems :: (Eq s) => [Node s a] -> [Node s a] -> [Node s a]
 equalElems [] _ = []
 equalElems (x:lst1) lst2
@@ -161,6 +168,21 @@ extractPath node = map (\x -> (nodeAction x, nodeState x)) (reverse parents)
     și se încheie în starea finală.
 -}
 
+revCurrentAct :: (ProblemState s a, Ord s) => ((Maybe a, s), (Maybe a, s)) -> (Maybe a, s)
+revCurrentAct node@(receiving, giving) = (newRec, newGive)
+    where 
+        newRec = Just (fst revAct)
+        revAct = reverseAction((fromJust (fst receiving)), (snd giving))
+        newGive = snd revAct      
+
+concatActions :: [(Maybe a, s)] -> [(Maybe a, s)] -> [((Maybe a, s), (Maybe a, s))]
+concatActions [] _ = []
+concatActions _ [] = []
+concatActions (x:list1) (y:list2)
+    | ((length (x:list1) == 0) || (length (y:list2) == 0)) = []
+    | otherwise = (x, y) : (concatActions list1 list2)
+
+
 solve :: (ProblemState s a, Ord s)
       => s          -- Starea inițială de la care se pornește
       -> s          -- Starea finală la care se ajunge
@@ -168,18 +190,17 @@ solve :: (ProblemState s a, Ord s)
 
 solve initialState finalState = path
     where
-        path = (extractPath firstHalf) ++ newPath --lastList
         commonNode = bidirBFS (createStateSpace initialState) (createStateSpace finalState)
         firstHalf = fst commonNode
         secondHalf = snd commonNode
-        finishNode =  head (extractPath secondHalf)
-        sndPath = tail (extractPath secondHalf)
-        revAct = map (\entry@(action, state) -> (Just (fst(reverseAction (fromJust action, state))), snd(reverseAction (fromJust action, state)))) sndPath
-        newPath = (reverse revAct) ++ finishNode : []
-        -- newActions = switchActions newPath
-        -- switchActions [x] = [x]
-        -- switchActions (x:y:list) = (fst x, snd y):[] ++ switchActions (y:list)
-        -- lastList = (tail newActions)
+        secPath = extractPath secondHalf -- [Finish -> Sn-1 -> ... -> S]
+        revertedList = reverse (secPath) -- [S -> ... -> Finish]
+        givingActions = reverse (tail secPath) -- [S-> .. Sn-1]
+        receivingActions = (tail revertedList) -- [S1 -> ... -> Finish]
+        zippedNewList = concatActions givingActions receivingActions
+        finalList = map (\x -> revCurrentAct x) zippedNewList
+        path = (extractPath firstHalf) ++ finalList
+        
 
 {-
 Finish -> ... -> S
